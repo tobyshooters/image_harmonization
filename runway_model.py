@@ -15,15 +15,15 @@
 import os
 import torch
 import cv2
-import runway
 import numpy as np
+import runway
 
 from iharm.inference.predictor import Predictor
 from iharm.mconfigs import ALL_MCONFIGS
 
 MODEL = "hrnet18_idih256"
 INPUT_SIZE = 256
-
+MASK_TYPE = None
 
 def _load_model(model_type, checkpoint):
     if type(checkpoint) is str:
@@ -35,8 +35,15 @@ def _load_model(model_type, checkpoint):
     model.load_state_dict(state)
     return model
 
-@runway.setup(options={'checkpoint': runway.file(extension='.pth')})
+options = {
+    'checkpoint': runway.file(extension='.pth'),
+    'mask': runway.category(choices=["binary", "alpha"], default="alpha", description="Type of mask"),
+}
+
+@runway.setup(options=options)
 def setup(opts):
+    global MASK_TYPE
+    MASK_TYPE = opts["mask"]
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     net = _load_model(MODEL, opts['checkpoint'])
     return Predictor(net, device)
@@ -44,7 +51,7 @@ def setup(opts):
 
 inputs = {
     'composite_image': runway.image,
-    'foreground_mask': runway.image 
+    'foreground_mask': runway.image(channels=4) 
 }
 
 outputs = {
@@ -59,9 +66,13 @@ def harmonize(model, inputs):
 
     mask = np.array(inputs["foreground_mask"])
     mask = cv2.resize(mask, (INPUT_SIZE, INPUT_SIZE), cv2.INTER_LINEAR)
-    mask = mask[:, :, 0]
-    mask[mask <= 100] = 0
-    mask[mask > 100] = 1
+    if MASK_TYPE == "binary":
+        mask = mask[:, :, 0]
+        mask[mask <= 100] = 0
+        mask[mask > 100] = 1
+    else:
+        mask = mask[:, :, -1]
+        mask[mask > 0] = 1
     mask = mask.astype(np.float32)
 
     output = model.predict(image, mask)
