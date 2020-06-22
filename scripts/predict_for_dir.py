@@ -20,7 +20,10 @@ from iharm.utils.exp import load_config_file
 def main():
     args, cfg = parse_args()
 
-    device = torch.device(f'cuda:{args.gpu}')
+    if args.gpu == "-1":
+        device = torch.device('cpu')
+    else:
+        device = torch.device(f'cuda:{args.gpu}')
     checkpoint_path = find_checkpoint(cfg.MODELS_PATH, args.checkpoint)
     net = load_model(args.model_type, checkpoint_path, verbose=True)
     predictor = Predictor(net, device)
@@ -46,7 +49,7 @@ def main():
         if resize_shape[0] > 0:
             image = cv2.resize(image, resize_shape, cv2.INTER_LINEAR)
 
-        mask_path = osp.join(args.masks, '_'.join(image_name.split('_')[:-1]) + '.png')
+        mask_path = osp.join(args.masks, image_name.split('.')[0] + '.png')
         mask_image = cv2.imread(mask_path)
         if resize_shape[0] > 0:
             mask_image = cv2.resize(mask_image, resize_shape, cv2.INTER_LINEAR)

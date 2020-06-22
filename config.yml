@@ -1,4 +1,4 @@
-MODELS_PATH: "/hdd0/harmonization_exps/models"
+MODELS_PATH: "models"
 EXPS_PATH: "/hdd0/harmonization_exps"
 
 HFLICKR_PATH: "/hdd0/datasets/ImageHarmonization/HFlickr"
