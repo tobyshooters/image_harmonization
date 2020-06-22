@@ -1,4 +1,6 @@
-
+# --------------------------------------
+# Run locally:
+# --------------------------------------
 # python3 scripts/predict_for_dir.py   \
 #     hrnet18_idih256                  \
 #     checkpoints/hrnet18_idih256.pth  \
@@ -8,27 +10,28 @@
 #     --gpu -1                         \
 #     --resize 256                     \
 #     --original-size                  \
+# --------------------------------------
 
 import os
 import torch
 import cv2
 import runway
+import numpy as np
 from iharm.inference.predictor import Predictor
+from iharm.mconfigs import ALL_MCONFIGS
 
 MODEL = "hrnet18_idih256"
 INPUT_SIZE = 256
-PORT = 4231
+
 
 def _load_model(model_type, checkpoint):
     net = ALL_MCONFIGS[model_type]['model'](**ALL_MCONFIGS[model_type]['params'])
+    if checkpoint is None:
+        checkpoint = torch.load("checkpoints/hrnet18_idih256.pth", map_location='cpu')
     state = net.state_dict()
     state.update(checkpoint)
     net.load_state_dict(state)
     return net
-
-def _fmt_input(img, size=INPUT_SIZE):
-    return cv2.resize(np.array(img), (size, size), cv2.INTER_LINEAR)
-
 
 @runway.setup(options={'checkpoint': runway.file(extension='.pth')})
 def setup(opts):
@@ -48,11 +51,20 @@ outputs = {
 
 @runway.command('harmonize', inputs=inputs, outputs=outputs)
 def harmonize(model, inputs):
-    img = _fmt_input(inputs["composite_image"])
-    mask = _fmt_input(inputs["foreground_mask"])
-    _, mask = cv2.threshold(mask[:, :, 0], 127, 255, cv2.THRESH_BINARY)
-    return model.predict(image, mask)
+    image = np.array(inputs["composite_image"])
+    og_size = image.shape[:2]
+    image = cv2.resize(image, (INPUT_SIZE, INPUT_SIZE), cv2.INTER_LINEAR)
+
+    mask = np.array(inputs["foreground_mask"])
+    mask = cv2.resize(mask, (INPUT_SIZE, INPUT_SIZE), cv2.INTER_LINEAR)
+    mask =  mask[:, :, 0]
+    mask[mask <= 100] = 0
+    mask[mask > 100] = 1
+    mask = mask.astype(np.float32)
+
+    output = model.predict(image, mask)
+    return cv2.resize(output, og_size[::-1], cv2.INTER_LINEAR)
 
 
 if __name__ == '__main__':
-    runway.run(port=PORT)
+    runway.run()
