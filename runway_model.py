@@ -1,9 +1,3 @@
-import os
-import torch
-import cv2
-import runway
-
-from iharm.inference.predictor import Predictor
 
 # python3 scripts/predict_for_dir.py   \
 #     hrnet18_idih256                  \
@@ -15,43 +9,50 @@ from iharm.inference.predictor import Predictor
 #     --resize 256                     \
 #     --original-size                  \
 
-def _load_model(model_type):
+import os
+import torch
+import cv2
+import runway
+from iharm.inference.predictor import Predictor
+
+MODEL = "hrnet18_idih256"
+INPUT_SIZE = 256
+PORT = 4231
+
+def _load_model(model_type, checkpoint):
     net = ALL_MCONFIGS[model_type]['model'](**ALL_MCONFIGS[model_type]['params'])
     state = net.state_dict()
     state.update(checkpoint)
     net.load_state_dict(state)
     return net
 
+def _fmt_input(img, size=INPUT_SIZE):
+    return cv2.resize(np.array(img), (size, size), cv2.INTER_LINEAR)
+
+
 @runway.setup(options={'checkpoint': runway.file(extension='.pth')})
 def setup(opts):
-    net = _load_model("hrnet18_idih256", opts['checkpoint'], verbose=True)
+    net = _load_model(MODEL, opts['checkpoint'])
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     return Predictor(net, device)
 
 
+inputs = {
+    'composite_image': runway.image,
+    'foreground_mask': runway.image 
+}
 
-# TODO: 256 should be parameter
-# Thresholding can be cleaned up
-# Extract input fmting
-
-inputs = { 'composite_image': runway.image,
-           'foreground_mask': runway.image  }
-outputs = { 'harmonized_image': runway.image }
+outputs = {
+    'harmonized_image': runway.image
+}
 
 @runway.command('harmonize', inputs=inputs, outputs=outputs)
 def harmonize(model, inputs):
-    img = np.array(inputs["composite_image"])
-    img = cv2.resize(img, (256, 256), cv2.INTER_LINEAR)
-
-    mask = np.array(inputs["foreground_mask"])
-    mask = cv2.resize(mask, (256, 256), cv2.INTER_LINEAR)
-    mask = cv2.threshold(mask[:, :, 0], 127, 255)
-    mask = mask_image[:, :, 0]
-    mask[mask <= 100] = 0
-    mask[mask > 100] = 1
-
+    img = _fmt_input(inputs["composite_image"])
+    mask = _fmt_input(inputs["foreground_mask"])
+    _, mask = cv2.threshold(mask[:, :, 0], 127, 255, cv2.THRESH_BINARY)
     return model.predict(image, mask)
 
 
 if __name__ == '__main__':
-    runway.run(port=4231)
+    runway.run(port=PORT)
