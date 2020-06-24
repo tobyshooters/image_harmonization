@@ -16,6 +16,8 @@ from iharm.mconfigs import ALL_MCONFIGS
 from iharm.utils.log import logger
 from iharm.utils.exp import load_config_file
 
+from color_transfer import transfer_color_histogram, transfer_Lab_statistics
+
 
 def main():
     args, cfg = parse_args()
@@ -30,13 +32,10 @@ def main():
 
     image_names = os.listdir(args.images)
 
-    def _save_image(image_name, bgr_image):
-        rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(
-            str(cfg.RESULTS_PATH / f'{image_name}'),
-            rgb_image,
-            [cv2.IMWRITE_JPEG_QUALITY, 85]
-        )
+    def _save_image(image_name, bgr_image, flag=""):
+        file_name = image_name.split(".")[0]
+        path = os.path.join(cfg.RESULTS_PATH, file_name + flag + ".jpg")
+        cv2.imwrite(path, bgr_image, [cv2.IMWRITE_JPEG_QUALITY, 85])
 
     logger.info(f'Save images to {cfg.RESULTS_PATH}')
 
@@ -56,6 +55,7 @@ def main():
 
         image_path = osp.join(args.images, image_name)
         image = cv2.imread(image_path)
+        og_image = image.copy()
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image_size = image.shape
         if resize_shape[0] > 0:
@@ -63,6 +63,7 @@ def main():
 
         mask_path = osp.join(args.masks, '_'.join(image_name.split('_')[:-1]) + '.png')
         mask_image = cv2.imread(mask_path)
+        og_mask = mask_image.copy()
         if resize_shape[0] > 0:
             mask_image = cv2.resize(mask_image, resize_shape, cv2.INTER_LINEAR)
         mask = mask_image[:, :, 0]
@@ -71,10 +72,18 @@ def main():
         mask = mask.astype(np.float32)
 
         pred = predictor.predict(image, mask)
+        pred = cv2.resize(pred, image_size[:-1][::-1])
 
-        if args.original_size:
-            pred = cv2.resize(pred, image_size[:-1][::-1])
-        _save_image(image_name, pred)
+        # Raw output
+        bgr_pred = cv2.cvtColor(pred, cv2.COLOR_RGB2BGR).astype(np.uint8)
+        _save_image(image_name, bgr_pred, flag="_model_output")
+
+        # Do color transfer
+        output = transfer_color_histogram(og_image, bgr_pred, og_mask)
+        _save_image(image_name, output, flag="_transfered_hist")
+
+        output = transfer_Lab_statistics(og_image, bgr_pred, og_mask)
+        _save_image(image_name, output, flag="_transfered_Lab")
 
 
 def parse_args():
