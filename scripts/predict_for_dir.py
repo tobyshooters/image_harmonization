@@ -40,8 +40,20 @@ def main():
 
     logger.info(f'Save images to {cfg.RESULTS_PATH}')
 
+    already_processed = os.listdir(cfg.RESULTS_PATH)
+
     resize_shape = (args.resize, ) * 2
     for image_name in tqdm(image_names):
+
+        if image_name.split(".")[-1] != "jpg":
+            continue
+
+        if image_name in already_processed:
+            print(image_name + " skipped")
+            continue
+
+        print(image_name + " running")
+
         image_path = osp.join(args.images, image_name)
         image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -49,7 +61,7 @@ def main():
         if resize_shape[0] > 0:
             image = cv2.resize(image, resize_shape, cv2.INTER_LINEAR)
 
-        mask_path = osp.join(args.masks, image_name.split('.')[0] + '.png')
+        mask_path = osp.join(args.masks, '_'.join(image_name.split('_')[:-1]) + '.png')
         mask_image = cv2.imread(mask_path)
         if resize_shape[0] > 0:
             mask_image = cv2.resize(mask_image, resize_shape, cv2.INTER_LINEAR)
