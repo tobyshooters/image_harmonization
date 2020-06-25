@@ -3,6 +3,14 @@ import cv2
 import numpy as np
 from shutil import copyfile
 
+def gridImages(imgs, labels):
+    h, w, _ = imgs[0].shape
+    grid = np.hstack(imgs)
+    for i, l in enumerate(labels):
+        cv2.putText(grid, l, (i*w+10, h-50), cv2.FONT_HERSHEY_SIMPLEX, 10, (0, 0, 255), 5)
+    return grid
+
+
 D = "HFlickr"
 for directory in ["comps", "masks", "truth", "grids"]:
     if not os.path.exists("test_data/" + directory):
