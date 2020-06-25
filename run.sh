@@ -4,9 +4,9 @@
  python3 scripts/predict_for_dir.py          \
      hrnet18_idih256                         \
      checkpoints/hrnet18_idih256.pth         \
-     --images test_data/sample/comps/        \
-     --masks test_data/sample/masks/         \
-     --results-path test_data/sample/results \
+     --images HAdobe5k/composite_images       \
+     --masks HAdobe5k/masks              \
+     --results-path HAdobe5k/results     \
      --gpu -1                                \
      --resize 256                            \
      --original-size                         \
