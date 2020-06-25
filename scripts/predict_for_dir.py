@@ -42,7 +42,10 @@ def main():
     already_processed = os.listdir(cfg.RESULTS_PATH)
 
     resize_shape = (args.resize, ) * 2
-    for image_name in tqdm(image_names):
+    for i, image_name in enumerate(tqdm(image_names)):
+
+        if i == 200:
+            break
 
         if image_name.split(".")[-1] != "jpg":
             continue

@@ -10,43 +10,32 @@ def gridImages(imgs, labels):
         cv2.putText(grid, l, (i*w+10, h-50), cv2.FONT_HERSHEY_SIMPLEX, 10, (0, 0, 255), 5)
     return grid
 
+D = "HAdobe5k"
+if not os.path.exists(D + "/grids"):
+    os.mkdir(D + "/grids")
 
-D = "HFlickr"
-for directory in ["comps", "masks", "truth", "grids"]:
-    if not os.path.exists("test_data/" + directory):
-        os.mkdir("test_data/" + directory)
+done = []
+for i, l in enumerate(os.listdir(D + "/results")):
+    print(i)
+    name = l.strip().split("_")[0]
+    name_with_id = "_".join(l.strip().split("_")[:3])
+    if name_with_id in done:
+        continue
 
-with open(D + "/HFlickr_test.txt", "r") as f:
-    for i, l in enumerate(f.readlines()):
-        name = l.strip().split(".")[0]
-        simple_name = "_".join(name.split("_")[:-1])
-        simplest_name = "_".join(simple_name.split("_")[:-1])
+    ###################################################################
+    # STEP 1: ISOLATE TEST
+    c = cv2.imread(os.path.join(D, "composite_images", name_with_id + ".jpg"))
+    m = cv2.imread(os.path.join(D, "masks", name + "_1.png"))
+    o = cv2.imread(os.path.join(D, "results", name_with_id + "_model_output.jpg"))
+    l = cv2.imread(os.path.join(D, "results", name_with_id + "_transfered_Lab.jpg"))
+    h = cv2.imread(os.path.join(D, "results", name_with_id + "_transfered_hist.jpg"))
+    r = cv2.imread(os.path.join(D, "real_images", name + ".jpg"))
+    ###################################################################
 
-        ###################################################################
-        # STEP 1: ISOLATE TEST
-        # comp_path = os.path.join(D, "composite_images", name + ".jpg")
-        # mask_path = os.path.join(D, "masks", simple_name + ".png")
-        # real_path = os.path.join(D, "real_images", simplest_name + ".jpg")
+    ###################################################################
+    # STEP 2: GRID RESULTS
+    grid = gridImages([c, m, o, l, h, r], ["composite", "mask", "model output", "Lab", "RGB", "ground truth"])
+    cv2.imwrite(D + "/grids/" + name_with_id + ".jpg", grid)
+    ###################################################################
 
-        # copyfile(comp_path, "test_data/comps/" + name + ".jpg")
-        # copyfile(mask_path, "test_data/masks/" + simple_name + ".png")
-        # copyfile(real_path, "test_data/truth/" + simplest_name + ".jpg")
-        ###################################################################
-
-        ###################################################################
-        # STEP 2: GRID RESULTS
-        c = cv2.imread("test_data/comps/" + name + ".jpg")
-        m = cv2.imread("test_data/masks/" + simple_name + ".png")
-        r = cv2.imread("test_data/results/" + name + ".jpg")
-        t = cv2.imread("test_data/truth/" + simplest_name + ".jpg")
-
-        grid = np.hstack([c, m, r, t])
-        h, w, _ = grid.shape
-        cv2.putText(grid, "composite",    (0      + 10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        cv2.putText(grid, "mask",         (w//4   + 10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        cv2.putText(grid, "result",       (2*w//4 + 10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        cv2.putText(grid, "ground truth", (3*w//4 + 10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        cv2.imwrite("test_data/grids/" + name + ".jpg", grid)
-        ###################################################################
-
-        if i == 199: break
+    done.append(name_with_id)
