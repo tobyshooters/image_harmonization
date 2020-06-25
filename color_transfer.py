@@ -50,7 +50,7 @@ def transfer_color_histogram(img, style, mask):
 # Reinhart transfer method, done in Lab space
 # https://www.cs.tau.ac.il/~turkel/imagepapers/ColorTransfer.pdf
 
-def transfer_Lab_statistics(img, style, mask, blur=False):
+def transfer_Lab_statistics(img, style, mask, soften=False):
     # Preprocess inputs, images to Lab space
     h, w, _ = img.shape
     img_lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB).astype(np.float64)
@@ -73,18 +73,18 @@ def transfer_Lab_statistics(img, style, mask, blur=False):
     canvas *= style_std / img_std
     canvas += style_avg
 
-    # Blur paste to avoid rough edges
-    if blur:
-        kernel_size = 2 * int(min(h, w) / 5) + 1
-        blur = cv2.GaussianBlur(alpha, (kernel_size, kernel_size), 0)
-        alpha[alpha == 0] = blur[alpha == 0]
-        alpha = alpha[:, :, None]
-        output = alpha * canvas + (1 - alpha) * img_lab
-
     # Paste masked region
-    else:
-        output = img_lab.copy()
-        output[alpha == 1] = canvas[alpha == 1]
+    output = img_lab.copy()
+    output[alpha == 1] = canvas[alpha == 1]
+
+    # Blur paste to avoid rough edges
+    if soften:
+        m = int(2 * (min(h, w) / 200) + 1)
+        n = int(2 * (min(h, w) / 100) + 1)
+        blurred_output = cv2.GaussianBlur(output, (n, n), 0)
+        gradient = cv2.morphologyEx(alpha, cv2.MORPH_GRADIENT, np.ones((m, m), np.uint8))
+        blurred_gradient = cv2.GaussianBlur(gradient, (n, n), 0)[:, :, None]
+        output = (1 - blurred_gradient) * output + blurred_gradient * blurred_output
 
     # Convert back to image
     output = np.clip(output, 0, 255)

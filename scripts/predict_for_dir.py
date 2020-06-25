@@ -41,6 +41,9 @@ def main():
 
     already_processed = os.listdir(cfg.RESULTS_PATH)
 
+    with open("test.txt", "r") as f:
+        test = [l.strip() for l in f.readlines()]
+
     resize_shape = (args.resize, ) * 2
     for i, image_name in enumerate(tqdm(image_names)):
 
@@ -82,11 +85,11 @@ def main():
         _save_image(image_name, bgr_pred, flag="_model_output")
 
         # Do color transfer
-        output = transfer_color_histogram(og_image, bgr_pred, og_mask)
-        _save_image(image_name, output, flag="_transfered_hist")
-
         output = transfer_Lab_statistics(og_image, bgr_pred, og_mask)
         _save_image(image_name, output, flag="_transfered_Lab")
+
+        output = transfer_Lab_statistics(og_image, bgr_pred, og_mask, soften=True)
+        _save_image(image_name, output, flag="_transfered_Lab_softened")
 
 
 def parse_args():
