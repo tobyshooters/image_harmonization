@@ -82,4 +82,4 @@ def harmonize(model, inputs):
 
 
 if __name__ == '__main__':
-    runway.run(debug=True, model_options={'checkpoint': "models/checkpoints/hrnet18_idih256.pth"})
+    runway.run(model_options={'checkpoint': "models/checkpoints/hrnet18_idih256.pth"})
