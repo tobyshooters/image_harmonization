@@ -79,8 +79,8 @@ def transfer_Lab_statistics(img, style, mask, soften=False):
 
     # Blur paste to avoid rough edges
     if soften:
-        m = int(2 * (min(h, w) / 200) + 1)
-        n = int(2 * (min(h, w) / 100) + 1)
+        m = 2 * int(min(h, w) / 200) + 1
+        n = 2 * int(min(h, w) / 100) + 1
         blurred_output = cv2.GaussianBlur(output, (n, n), 0)
         gradient = cv2.morphologyEx(alpha, cv2.MORPH_GRADIENT, np.ones((m, m), np.uint8))
         blurred_gradient = cv2.GaussianBlur(gradient, (n, n), 0)[:, :, None]

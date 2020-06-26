@@ -41,20 +41,21 @@ def main():
 
     already_processed = os.listdir(cfg.RESULTS_PATH)
 
-    with open("test.txt", "r") as f:
-        test = [l.strip() for l in f.readlines()]
+    with open(args.test_path, "r") as f:
+        test_files = [l.strip() for l in f.readlines()]
 
     resize_shape = (args.resize, ) * 2
-    for i, image_name in enumerate(tqdm(image_names)):
 
-        if i == 200:
-            break
+    for image_name in tqdm(image_names):
 
         if image_name.split(".")[-1] != "jpg":
             continue
 
+        if image_name not in test_files:
+            continue
+
         if image_name in already_processed:
-            print(image_name + " skipped")
+            print(image_name + " already done")
             continue
 
         print(image_name + " running")
@@ -64,32 +65,45 @@ def main():
         og_image = image.copy()
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image_size = image.shape
+
+        divisor = 128
         if resize_shape[0] > 0:
             image = cv2.resize(image, resize_shape, cv2.INTER_LINEAR)
+        else:
+            h, w, _ = image.shape
+            shape = (divisor * (w // divisor), divisor * (h // divisor))
+            image = cv2.resize(image, shape, cv2.INTER_LINEAR)
 
         mask_path = osp.join(args.masks, '_'.join(image_name.split('_')[:-1]) + '.png')
         mask_image = cv2.imread(mask_path)
         og_mask = mask_image.copy()
+
         if resize_shape[0] > 0:
             mask_image = cv2.resize(mask_image, resize_shape, cv2.INTER_LINEAR)
+        else:
+            h, w, _ = mask_image.shape
+            shape = (divisor * (w // divisor), divisor * (h // divisor))
+            mask_image = cv2.resize(mask_image, shape, cv2.INTER_LINEAR)
+
         mask = mask_image[:, :, 0]
         mask[mask <= 100] = 0
         mask[mask > 100] = 1
         mask = mask.astype(np.float32)
 
         pred = predictor.predict(image, mask)
-        pred = cv2.resize(pred, image_size[:-1][::-1])
 
-        # Raw output
+        if args.original_size:
+            pred = cv2.resize(pred, image_size[:-1][::-1])
+
         bgr_pred = cv2.cvtColor(pred, cv2.COLOR_RGB2BGR).astype(np.uint8)
         _save_image(image_name, bgr_pred, flag="_model_output")
 
         # Do color transfer
-        output = transfer_Lab_statistics(og_image, bgr_pred, og_mask)
-        _save_image(image_name, output, flag="_transfered_Lab")
+        # output = transfer_Lab_statistics(og_image, bgr_pred, og_mask)
+        # _save_image(image_name, output, flag="_transfered_Lab")
 
-        output = transfer_Lab_statistics(og_image, bgr_pred, og_mask, soften=True)
-        _save_image(image_name, output, flag="_transfered_Lab_softened")
+        # output = transfer_Lab_statistics(og_image, bgr_pred, og_mask, soften=True)
+        # _save_image(image_name, output, flag="_transfered_Lab_softened")
 
 
 def parse_args():
@@ -120,6 +134,11 @@ def parse_args():
     parser.add_argument(
         '--results-path', type=str, default='',
         help='The path to the harmonized images. Default path: cfg.EXPS_PATH/predictions.'
+    )
+
+    parser.add_argument(
+        '--test-path', type=str,
+        help='Path to text file identifying tests '
     )
 
     args = parser.parse_args()
